@@ -1,6 +1,6 @@
 from sqlalchemy.orm import validates
 
-from db import db
+from extensions import db
 
 class EmployeeModel(db.Model):
     __tablename__ = "employees"

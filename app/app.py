@@ -1,14 +1,15 @@
 import os
 
-from flask_smorest import Api
 from flask import Flask
-from config import FlaskAppConfig, SwaggerConfig
-from models.departments import DepartmentModel
+from flask_smorest import Api
+from flask_marshmallow import Marshmallow
 from models.employees import EmployeeModel
+from models.departments import DepartmentModel
+from config import FlaskAppConfig, SwaggerConfig
 
-from routes.departments import blp as DepartmentsBlueprint
+from extensions import db, mw
 from routes.employees import blp as EmployeesBlueprint
-from db import db
+from routes.departments import blp as DepartmentsBlueprint
 
 def create_app():
     app = Flask(__name__)
@@ -17,6 +18,8 @@ def create_app():
     app.config.from_object(SwaggerConfig)
     
     db.init_app(app)
+    
+    mw.init_app(app)
     
     api = Api(app)
     

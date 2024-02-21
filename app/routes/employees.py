@@ -1,11 +1,12 @@
-from werkzeug.exceptions import HTTPException
-from psycopg2.errors import NotNullViolation
-from sqlalchemy.exc import IntegrityError
-from flask import request, jsonify, abort
 from flask_smorest import Blueprint
+from flask import request, jsonify, abort
+from sqlalchemy.exc import IntegrityError
+from psycopg2.errors import NotNullViolation
+from werkzeug.exceptions import HTTPException
 
+from extensions import db
+from schemas import employeeSchema, employeesSchema
 from models.employees import EmployeeModel
-from db import db
 
 blp = Blueprint('Employees routes', __name__, description="Operations on employees")
 
@@ -16,25 +17,19 @@ def getEmployees(employeeId=None):
     try:
         if employeeId:
             employee = EmployeeModel.query.get_or_404(employeeId, description=f"No employee found with the ID {employeeId}")
-            return jsonify({"status": 200, "employee": {
-                "id": employee.id,
-                "name": employee.name,
-                "lastname": employee.lastname,
-                "salary": employee.salary,
-                "position": employee.position,
-                "id_department": employee.id_department
-            }}), 200
+            return jsonify({
+                "status": 200, 
+                "employee": employeeSchema.dump(employee)
+            }), 200
         
         employees = EmployeeModel.query.all()
         if not employees:
             return abort(404, description="No employees found in the database. Please add some.")
-        return jsonify([{
-            "id": employee.id,
-            "name": employee.name,
-            "lastname": employee.lastname,
-            "salary": employee.salary,
-            "position": employee.position,
-            "id_department": employee.id_department} for employee in employees]), 200
+        return jsonify({
+            "status": 200, 
+            "employees": employeesSchema.dump(employees)
+        }), 200
+
         
     except HTTPException as e:
         return jsonify({"status": e.code, "error": f"{e}"})
@@ -54,14 +49,11 @@ def addEmployees():
         db.session.add(employee)
         db.session.commit()
         
-        return jsonify({"status": 201, "entry": {
-            "id": employee.id,
-            "name": employee.name,
-            "salary": employee.salary,
-            "lastname": employee.lastname,
-            "position": employee.position,
-            "id_department": employee.id_department
-        }})
+        return jsonify({
+            "status": 201, 
+            "message": f"Employee {employee.name} was added successfully.",
+            "employee": employeeSchema.dump(employee)
+        }), 201
         
     except IntegrityError as e:
         db.session.rollback()
@@ -106,7 +98,6 @@ def updateEmployees(employeeId):
         db.session.commit()
         if not update:
             return abort(404, description=f"No employee found with the ID {employeeId}")
-                
         return jsonify({
             "status": 200, 
             "message": f"Employee with ID {employeeId} was updated successfully.",

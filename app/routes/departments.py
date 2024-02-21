@@ -1,11 +1,12 @@
-from psycopg2.errors import UniqueViolation, NotNullViolation
-from werkzeug.exceptions import HTTPException
-from sqlalchemy.exc import IntegrityError
-from flask import request, jsonify, abort
 from flask_smorest import Blueprint
+from flask import request, jsonify, abort
+from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import HTTPException
+from psycopg2.errors import UniqueViolation, NotNullViolation
 
+from extensions import db
 from models.departments import DepartmentModel
-from db import db
+from schemas import departmentSchema, departmentsSchema
 
 blp = Blueprint('Departments routes', __name__, description="Operations on departments")
 
@@ -15,19 +16,13 @@ def getDepartments(deptId=None):
     try:
         if deptId:
             department = DepartmentModel.query.get_or_404(deptId, description="No department found with that ID. Please try with another one.")
-            return jsonify({
-                "id": department.id,
-                "name": department.name,
-                "leader": department.leader
-            }), 200
+            return jsonify(departmentSchema.dump(department)), 200
         
         departments = DepartmentModel.query.all()
         if not departments:
             return abort(404, "Departments not found in the database. Please add some.")
-        return jsonify([{
-            "id": department.id, 
-            "name": department.name, 
-            "leader": department.leader} for department in departments]), 200
+        return jsonify(departmentsSchema.dump(departments)), 200
+
         
     except HTTPException as e:
         return jsonify({"status": e.code, "error": e.description})
@@ -49,12 +44,9 @@ def addDepartments():
         return jsonify({
             "status": 201,
             "message": "Department added successfully",
-            "entry": {
-                "id": department.id,
-                "name": department.name,
-                "leader": department.leader
-            }
-        }), 201
+            "entry": departmentSchema.dump(department)
+            }), 201
+    
 
     except IntegrityError as e:
         db.session.rollback()
@@ -82,14 +74,11 @@ def updateDepartment(deptId):
             setattr(department, key, value)
         # DepartmentModel.query.filter(DepartmentModel.id == deptId).update(data) # <-- This is another way to update the department but it doesn't trigger the @validates decorator due to this instruction interacts directly with the database
         db.session.commit()
+        
         return jsonify({
             "status": 200,
             "message": "Department updated successfully",
-            "entry": {
-                "id": department.id,
-                "name": department.name,
-                "leader": department.leader
-            }
+            "entry": departmentSchema.dump(department)
         }), 200
         
     except Exception as e:
